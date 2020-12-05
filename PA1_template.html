@@ -1,0 +1,90 @@
+<hr>
+<p>title: &quot;Reproducible Research: Peer Assessment 1&quot;
+output: 
+  html_document:</p>
+<pre><code><span class="hljs-string">keep_md:</span> <span class="hljs-literal">true</span>
+</code></pre><hr>
+<h2 id="loading-and-preprocessing-the-data">Loading and preprocessing the data</h2>
+<pre><code class="lang-{r}">activityData &lt;- <span class="hljs-keyword">read</span>.csv(<span class="hljs-keyword">file</span>=<span class="hljs-string">"activity.csv"</span>, header=<span class="hljs-keyword">TRUE</span>)
+</code></pre>
+<h2 id="what-is-mean-total-number-of-steps-taken-per-day-">What is mean total number of steps taken per day?</h2>
+<pre><code class="lang-{r}">
+# The <span class="hljs-keyword">total</span> steps taken per <span class="hljs-built_in">day</span>
+totalSteps &lt;- aggregate(steps ~ date, activityData, FUN=<span class="hljs-keyword">sum</span>)
+
+# <span class="hljs-keyword">Histogram</span> of the <span class="hljs-keyword">total</span> number of steps taken per <span class="hljs-built_in">day</span>
+<span class="hljs-keyword">hist</span>(totalSteps<span class="hljs-variable">$steps</span>, main = <span class="hljs-string">"Total Steps per Day"</span>, xlab = <span class="hljs-string">"Number of Steps"</span>)
+
+# Calculation and a <span class="hljs-keyword">report</span> of the <span class="hljs-keyword">mean</span> and <span class="hljs-keyword">median</span> of <span class="hljs-keyword">total</span> steps taken per <span class="hljs-built_in">day</span>
+meanSteps &lt;- <span class="hljs-keyword">mean</span>(totalSteps<span class="hljs-variable">$steps</span>, na.<span class="hljs-keyword">rm</span> = TRUE)
+medSteps &lt;- <span class="hljs-keyword">median</span>(totalSteps<span class="hljs-variable">$steps</span>, na.<span class="hljs-keyword">rm</span> = TRUE)
+</code></pre>
+<h2 id="what-is-the-average-daily-activity-pattern-">What is the average daily activity pattern?</h2>
+<pre><code class="lang-{r}">
+<span class="hljs-comment"># 2 - Make a time-series plot of the 5-minute interval and the average number of</span>
+<span class="hljs-comment"># steps taken, averaged acoss all days.</span>
+
+library(ggplot2)
+meanStepsByInt &lt;- aggregate(steps ~ interval, activityData, mean)
+ggplot(<span class="hljs-attr">data</span> = meanStepsByInt, aes(<span class="hljs-attr">x</span> = interval, <span class="hljs-attr">y</span> = steps)) +
+        geom_line() +
+        ggtitle(<span class="hljs-string">"Average Daily Activity Pattern"</span>) +
+        xlab(<span class="hljs-string">"5-minute Interval"</span>) +
+        ylab(<span class="hljs-string">"Average Number of Steps"</span>) +
+        theme(plot.<span class="hljs-attr">title</span> = element_text(<span class="hljs-attr">hjust</span> = <span class="hljs-number">0.5</span>))
+
+<span class="hljs-comment"># 5-minute interval across all days contain the maximum number of steps</span>
+maxInt &lt;- meanStepsByInt[which.max(meanStepsByInt$steps),]
+</code></pre>
+<h2 id="imputing-missing-values">Imputing missing values</h2>
+<pre><code class="lang-{r}">
+# Calculation and a <span class="hljs-keyword">report</span> <span class="hljs-keyword">for</span> the <span class="hljs-keyword">total</span> number of missing values <span class="hljs-keyword">in</span> the dataset
+missingVals &lt;- is.na(activityData<span class="hljs-variable">$steps</span>)
+
+# Creating a new dataset that is equal to the original dataset but with 
+# the missing data filled <span class="hljs-keyword">in</span>.
+imp_activityData &lt;- transform(activityData,
+                              steps = ifelse(is.na(activityData<span class="hljs-variable">$steps</span>),
+                                             meanStepsByInt<span class="hljs-variable">$steps</span>[<span class="hljs-built_in">match</span>(activityData<span class="hljs-variable">$interval</span>, 
+                                                                        meanStepsByInt<span class="hljs-variable">$interval</span>)],
+                                             activityData<span class="hljs-variable">$steps</span>))
+
+#  <span class="hljs-keyword">histogram</span> of the <span class="hljs-keyword">total</span> number of steps taken each day and
+# and <span class="hljs-keyword">report</span> the <span class="hljs-keyword">mean</span> and <span class="hljs-keyword">median</span>.
+impStepsByInt &lt;- aggregate(steps ~ date, imp_activityData, FUN=<span class="hljs-keyword">sum</span>)
+<span class="hljs-keyword">hist</span>(impStepsByInt<span class="hljs-variable">$steps</span>,
+     main = <span class="hljs-string">"Imputed Number of Steps Per Day"</span>,
+     xlab = <span class="hljs-string">"Number of Steps"</span>)
+
+impMeanSteps &lt;- <span class="hljs-keyword">mean</span>(impStepsByInt<span class="hljs-variable">$steps</span>, na.<span class="hljs-keyword">rm</span> = TRUE)
+impMedSteps &lt;- <span class="hljs-keyword">median</span>(impStepsByInt<span class="hljs-variable">$steps</span>, na.<span class="hljs-keyword">rm</span> = TRUE)
+diffMean = impMeanSteps - meanSteps
+diffMed = impMedSteps - medSteps
+diffTotal = <span class="hljs-built_in">sum</span>(impStepsByInt<span class="hljs-variable">$steps</span>) - <span class="hljs-built_in">sum</span>(totalSteps<span class="hljs-variable">$steps</span>)
+</code></pre>
+<h2 id="are-there-differences-in-activity-patterns-between-weekdays-and-weekends-">Are there differences in activity patterns between weekdays and weekends?</h2>
+<pre><code class="lang-{r}">
+<span class="hljs-comment"># Creating a new factor variable in the dataset with two levels - "weekend" and "weekday"</span>
+DayType &lt;- <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-title">date</span>) {</span>
+        day &lt;- weekdays(<span class="hljs-built_in">date</span>)
+        <span class="hljs-keyword">if</span> (day %<span class="hljs-keyword">in</span>% c(<span class="hljs-string">'Monday'</span>, <span class="hljs-string">'Tuesday'</span>, <span class="hljs-string">'Wednesday'</span>, <span class="hljs-string">'Thursday'</span>, <span class="hljs-string">'Friday'</span>))
+                <span class="hljs-literal">return</span> (<span class="hljs-string">"weekeday"</span>)
+        <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (day %<span class="hljs-keyword">in</span>% c(<span class="hljs-string">'Saturday'</span>, <span class="hljs-string">'Sunday'</span>))
+                <span class="hljs-literal">return</span> (<span class="hljs-string">"weekend"</span>)
+        <span class="hljs-keyword">else</span>
+                <span class="hljs-built_in">stop</span> (<span class="hljs-string">"Invalid Date Format."</span>)
+}
+imp_activityData$<span class="hljs-built_in">date</span> &lt;- <span class="hljs-keyword">as</span>.Date(imp_activityData$<span class="hljs-built_in">date</span>)
+imp_activityData$day &lt;- sapply(imp_activityData$<span class="hljs-built_in">date</span>, FUN = DayType)
+
+<span class="hljs-comment"># Making a panel plot containnig a time-series plot of the 5-minute interval</span>
+<span class="hljs-comment"># and the average number of steps taken across all weekdays or weekends</span>
+meanStepsByDay &lt;- aggregate(steps ~ interval + day, imp_activityData, mean)
+ggplot(data = meanStepsByDay, aes(x = interval, y = steps)) + 
+        geom_line() +
+        facet_grid(day ~ .) +
+        ggtitle(<span class="hljs-string">"Average Daily Activity Pattern"</span>) +
+        xlab(<span class="hljs-string">"5-minute Interval"</span>) +
+        ylab(<span class="hljs-string">"Average Number of Steps"</span>) +
+        theme(plot.title = element_text(hjust = <span class="hljs-number">0.5</span>))
+</code></pre>
